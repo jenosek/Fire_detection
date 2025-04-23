@@ -90,8 +90,13 @@ class BG77:
         #a = serial.read(9)
         #print(a)
         #raise "Error BG77 not reachable."
+    def __flush_uart_rx_buffer(self):
+        while self.serial.any():
+            dummy_data = self.serial.read()
+            if self.verbose:
+                print(f"Flushing -- {dummy_data} -- End of Flush")
 
-    def __read(self, exit_condition="OK\r\n", timeout = 1) -> str:
+    def __read(self, exit_condition="OK\r\n", timeout = 3) -> str:
         time_start = time.time()
         data_out = ""
         while time.time() < (time_start + timeout):
@@ -108,6 +113,7 @@ class BG77:
     def sendCommand(self, cmd: str, exit_condition = "OK\r\n", timeout = 1) -> str:
         if self.verbose:
             print(str(time.ticks_ms()) + " -> " + cmd.strip("\r\n"))
+        self.__flush_uart_rx_buffer()
         self.__write(cmd)
         '''data_out = ""
         time_start = time.time()
@@ -133,6 +139,7 @@ class BG77:
         #return False
 
     def testAT(self) -> bool:
+        self.__flush_uart_rx_buffer()
         ret = self.sendCommand("AT\r\n")
         if "OK" in ret:
             return True
@@ -140,6 +147,7 @@ class BG77:
     
 
     def setEcho(self, echo : bool) -> bool:
+        self.__flush_uart_rx_buffer()
         if echo:
             ret = self.sendCommand("ATE1\r\n")
         else:
@@ -150,6 +158,7 @@ class BG77:
         return False
     
     def setRadio(self, state: int) -> bool:
+        self.__flush_uart_rx_buffer()
         if state == 1 or state == 0 or state == 4:
             ret = self.sendCommand(f"AT+CFUN={state}\r\n", timeout = 2)
         else:
@@ -160,6 +169,7 @@ class BG77:
         return False
     
     def setOperator(self, mode = COPS_AUTO, op_plmn = Operator.CZ_VODAFONE) -> bool:
+        self.__flush_uart_rx_buffer()
         if mode == COPS_AUTO:
             ret = self.sendCommand(f"AT+COPS={mode}\r\n", timeout = 30)
         elif mode == COPS_DEREGISTER or mode == COPS_MANUAL or mode == COPS_PREFFERED:
@@ -175,6 +185,7 @@ class BG77:
             raise OSError("BG77 Error setting COPS")
         
     def __setCEREG(self, mode:int) -> bool:
+        self.__flush_uart_rx_buffer()
         if mode == 0 or mode == 1 or mode == 2 or mode == 4:
             ret = self.sendCommand(f"AT+CEREG={mode}\r\n")
         else:
@@ -182,6 +193,7 @@ class BG77:
         return True
     
     def isRegistered(self) -> bool:
+        self.__flush_uart_rx_buffer()
         ret = self.sendCommand(f"AT+CEREG?\r\n")
         if "+CEREG" in ret:
             data = ret.strip("+CEREG: ")
@@ -196,24 +208,28 @@ class BG77:
         return False
     
     def setAPN(self, apn:str) -> bool:
+        self.__flush_uart_rx_buffer()
         ret = self.sendCommand(f"AT+CGDCONT=1,\"IP\",\"{apn}\"\r\n")
         if "OK" in ret:
             return True
         return False
     
     def attachToNetwork(self):
+        self.__flush_uart_rx_buffer()
         ret = self.sendCommand(f"AT+CGATT=1\r\n", timeout = 60)
         if "OK" in ret:
             return True
         return False
     
     def detachFromNetwork(self):
+        self.__flush_uart_rx_buffer()
         ret = self.sendCommand(f"AT+CGATT=0\r\n", timeout = 60)
         if "OK" in ret:
             return True
         return False
     
     def getNWInfo(self) -> NWInfo:
+        self.__flush_uart_rx_buffer()
         #Check if device is registered.
         ret = self.sendCommand(f"AT+CEREG?\r\n")
         if not "+CEREG" in ret:
@@ -254,6 +270,15 @@ class BG77:
         nwinfo.Operator = data[1].strip("\"")
         nwinfo.Band = data[2].strip("\"")
         nwinfo.EARFCN = int(data[3])
+        
+        if nwinfo.RAT == "NB-IoT":
+            ret = self.sendCommand(f"AT+QCFG=\"celevel\"\r\n")
+            if not "+QCFG" in ret:
+                return nwinfo
+            ret.strip("\r\n\r\nOK")
+            data = ret.split(",")
+            nwinfo.ECL = int(data[1][0])
+            
 
         return nwinfo
     
@@ -262,7 +287,7 @@ class BG77:
         if self.socket_mounted:
             return False
         
-
+        self.__flush_uart_rx_buffer()
         if self.rat == 1 and rat == 0: #Narrowband -> CatM
             ret = self.sendCommand(f"AT+QCFG=\"iotopmode\",{rat},{immediate_effect}\r\n")
             if "OK" in ret:
@@ -411,8 +436,42 @@ class BG77Socket:
                 return False
             retry_num += 1
         return False
-
-
+    
+    def sendBytes(self, bts, rai=0):
+        '''
+        hex_data = ""
+        print(len(bts))
+        print(bts.hex())
+        for c in bts:
+            hex_data += str((c >> 4))
+            hex_data += str(c & 0x0F)
+            print(f"{c} -- {hex_data}")
+        print(hex_data)
+        print(len(hex_data))
+        '''
+        ret = self.modem.sendCommand(f"AT+QISENDEX={self.socket_num},\"{bts.hex()}\",{rai}\r\n",exit_condition="\r\n")
+        if self.modem.verbose:
+            print(str(time.ticks_ms()) + " <- " + ret)
+            
+        retry_num = 0
+        while retry_num < 10:
+            ret = self.modem.__read("\r\n")
+            if self.modem.verbose:
+                    print(str(time.ticks_ms()) + " <- " + ret)
+            if "SEND OK" in ret:
+                return True
+            elif "SEND FAIL" in ret:
+                print("Error sending message. Buffer is full.")
+                return False
+            elif "ERROR" in ret:
+                print("Error sending message. Connection does not exist.")
+                return False
+            retry_num += 1
+        return False
+        
+    def isDataInBuffer(self):
+        return self.__dataInBuffer()
+    
     def recv(self, num_bytes=100):
         #No timeout set
         if self.__dataInBuffer():
@@ -432,7 +491,7 @@ class BG77Socket:
                         if self.socket_push_mode == SOCK_PUSH_TERMINAL:
                             data_len = int(ret_split[1])
                             message_response = self.modem.__read(exit_condition="\r\n")
-                            message = message_response[:data_len-1]
+                            message = message_response[:data_len]
                             return data_len, message
                         elif self.socket_mode == SOCK_PUSH_BUFFER:
                             data_len, message = self.__readFromBuffer(num_bytes)
@@ -445,18 +504,24 @@ class BG77Socket:
                 if self.modem.verbose:
                     print(str(time.ticks_ms()) + " <- " + ret)
                 if "\"recv\"" in ret:
+                    if not "\r\n" in ret:
+                        ret += self.modem.__read(exit_condition="\r\n")
                     ret = ret.strip("+QIURC: \"recv\",")
                     ret = ret.strip("\r\n")
                     ret_split = ret.split(',')
-                    if int(ret_split[0]) == self.socket_num:
-                        if self.socket_push_mode == SOCK_PUSH_TERMINAL:
-                            data_len = int(ret_split[1])
-                            message_response = self.modem.__read(exit_condition="\r\n")
-                            message = message_response[:data_len-1]
-                            return data_len, message
-                        elif self.socket_mode == SOCK_PUSH_BUFFER:
-                            data_len, message = self.__readFromBuffer(num_bytes)
-                            return data_len, message
+                    try:
+                        if int(ret_split[0]) == self.socket_num:
+                            if self.socket_push_mode == SOCK_PUSH_TERMINAL:
+                                data_len = int(ret_split[1])
+                                message_response = self.modem.__read(exit_condition="\r\n")
+                                message = message_response[:data_len]
+                                return data_len, message
+                            elif self.socket_mode == SOCK_PUSH_BUFFER:
+                                data_len, message = self.__readFromBuffer(num_bytes)
+                                return data_len, message
+                    except:
+                        print(ret_split)
+                        return 0, None
         return 0, None
 
 
@@ -474,19 +539,20 @@ class BG77Socket:
         
 
     def __dataInBuffer(self) -> bool:
-        ret = self.modem.sendCommand(f"AT+QIRD={self.socket_num},0\r\n",exit_condition="\r\n")
+        ret = self.modem.sendCommand(f"AT+QIRD={self.socket_num},0\r\n",exit_condition="\r\n", timeout = 3)
         if self.modem.verbose:
             print(str(time.ticks_ms()) + " <- " + ret)
         #ret = self.modem.__read(exit_condition="\r\n")
         retry_num = 0
-        while not "+QIRD" in ret:
-            ret = self.modem.__read(exit_condition="\r\n")
+        while not ("+QIRD" in ret) or not ("\r\n" in ret):
+            ret += self.modem.__read(exit_condition="\r\n", timeout = 3)
             if self.modem.verbose:
                 print(str(time.ticks_ms()) + " <- " + ret)
             retry_num += 1
             if retry_num > 9:
                 return False
             
+        #print(f"RET -- {ret} --- EORET")
         ret = ret.strip("\r\n")
         ret = ret.strip("+QIRD: ")
         ret_split = ret.split(',')
@@ -498,13 +564,13 @@ class BG77Socket:
         return True
     
     def __readFromBuffer(self,data_size):
-        ret = self.modem.sendCommand(f"AT+QIRD={self.socket_num},{data_size}\r\n",exit_condition="\r\n")
+        ret = self.modem.sendCommand(f"AT+QIRD={self.socket_num},{data_size}\r\n",exit_condition="\r\n", timeout = 3)
         if self.modem.verbose:
             print(str(time.ticks_ms()) + " <- " + ret)
 
         retry_num = 0
-        while not "+QIRD" in ret:
-            ret = self.modem.__read(exit_condition="\r\n")
+        while not ("+QIRD" in ret) or not ("\r\n" in ret):
+            ret += self.modem.__read(exit_condition="\r\n", timeout = 3)
             if self.modem.verbose:
                 print(str(time.ticks_ms()) + " <- " + ret)
             retry_num += 1
@@ -513,10 +579,10 @@ class BG77Socket:
         ret = ret.strip("\r\n")
         ret = ret.strip("+QIRD: ")
         data_len = int(ret)
-        message_raw = self.modem.__read(exit_condition="\r\n")
+        message_raw = self.modem.__read(exit_condition="\r\n", timeout=2)
         if self.modem.verbose:
             print(str(time.ticks_ms()) + " <- " + message_raw)
-        message = message_raw[:data_len-1]
+        message = message_raw[:data_len]
         #Flush the OK from the last transaction
         self.modem.__read()
         return data_len, message
