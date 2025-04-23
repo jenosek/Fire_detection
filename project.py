@@ -5,8 +5,8 @@ import BG77
 import _thread
 import os
 import gen_json
-from coap import microcoapy
-from coap import coap_macros as macros
+#from coap import microcoapy
+#from coap import coap_macros as macros
 
 DEV_ID = 24
 FW_VER = "1.0.0"
@@ -16,13 +16,15 @@ GPS = [49.2267250, 16.5743461]
 AccessT = "2njiwhpsv38zc0i49214"
 DevID = "14279d50-1f84-11f0-9037-29f37c847020"
 
-IP_ADDRESS = "147.229.148.105"
-PORT = 5683
+#IP_ADDRESS = "147.229.148.105"
+IP_ADDRESS = "62.245.74.185"
+PORT = 63404
+#PORT = 5683
 _COAP_POST_URL = f'api/v1/{AccessT}/telemetry'
 
 # INIT COAP CLIENT 
-client = microcoapy.Coap()
-client.debug = True
+#client = microcoapy.Coap()
+#client.debug = True
 
 
 
@@ -129,12 +131,10 @@ json_init_payload = gen_json.gen_json_init(getStartInfo(), GPS, DEV_ID, FW_VER, 
 '''
 Opening UDP socket
 '''
-success, socket = module.socket(BG77.AF_INET, BG77.SOCK_DGRAM, BG77.SOCK_CLIENT, BG77.SOCK_PUSH_BUFFER)
-socket.connect(IP_ADDRESS, PORT, 0)
-hex_payload = bytearray(json_init_payload, "utf-8")
-if module.isRegistered():
-    bytes = client.post(ip=IP_ADDRESS, port=PORT, url=_COAP_POST_URL, payload=json_init_payload, content_format=macros.COAP_CONTENT_FORMAT.COAP_APPLICATION_JSON)
-    socket.sendBytes(bts=bytes)
+success, mysocket = module.socket(BG77.AF_INET, BG77.SOCK_DGRAM, BG77.SOCK_CLIENT, BG77.SOCK_PUSH_BUFFER)
+mysocket.connect(IP_ADDRESS, PORT, 0)
+if module.isRegistered():   
+    mysocket.send(json_init_payload)
 
 
 while True:
