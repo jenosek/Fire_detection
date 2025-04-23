@@ -11,7 +11,7 @@ Content-Format: application/json
 # DEV_ID = int
 # FW_VER = string
 # MAN = string
-def gen_json_init(radio_values, gps, DEV_ID, FW_VER, MAN):
+def gen_json_init(radio_values, GPS, DEV_ID, FW_VER, MAN):
     json_payload = f"""{{
     "deviceId": {DEV_ID},
     "firmwareVersion": "{FW_VER}",
