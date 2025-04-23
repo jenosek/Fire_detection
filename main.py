@@ -32,9 +32,9 @@ hum = []
 
 # VARIABLES
 global alarm
-global false_alarm
+global notify_alarm
 alarm = False
-false_alarm = False
+notify_alarm = False
 
 # RADIO WAKE UP
 spoll=uselect.poll()
@@ -83,21 +83,21 @@ def irq_meas(_):
     temp.append(sensor.temperature)
     hum.append(sensor.humidity)
     global alarm 
-    global false_alarm
+    global notify_alarm
 
     if (sensor.temperature <= TEMP_THR and alarm):
-        false_alarm = True
+        notify_alarm = True
         alarm = False
 
     if (sensor.temperature > TEMP_THR and not alarm) :
         alarm = True
-        false_alarm = False
+        notify_alarm = True
     
 
 ## Returns [SINR, RSRP] values as ints
-def getSINRandRSRP():
+def getSINRandRSRP(module):
     response = module.sendCommand("AT+QCSQ\r\n")
-    while "NBIoT" not in response:
+    while "NBIoT" not in response and len(response.split(","))>3:
         time.sleep(1)
         response = module.sendCommand("AT+QCSQ\r\n")
         print(response)
@@ -135,12 +135,12 @@ if module.isRegistered():
     mysocket.send(json_init_payload)
 
 ## Timer
-time = machine.Timer()
-time.init(mode=machine.Timer.PERIODIC, period=PERIOD, callback=irq_meas)
+timer = machine.Timer()
+timer.init(mode=machine.Timer.PERIODIC, period=PERIOD, callback=irq_meas)
 
 while(1):
-    if (len(temp) == TOTAL_MEAS_ITER or alarm or false_alarm):
-        sinr, rsrp = getSINRandRSRP()
+    if (len(temp) == TOTAL_MEAS_ITER or notify_alarm):
+        sinr, rsrp = getSINRandRSRP(module)
 
         sensor_json_payload = gen_json.gen_json_data(alarm, rsrp, sinr, temp, hum)
         '''
@@ -157,6 +157,7 @@ while(1):
 
         temp.clear()
         hum.clear()
+        notify_alarm = False
         
         
     
