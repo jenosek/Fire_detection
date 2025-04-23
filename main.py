@@ -12,7 +12,7 @@ import gen_json
 I2C_SDA = 14
 I2C_CLK = 15
 SENSOR_ADDRESS = 56
-TEMP_THR = 20
+TEMP_THR = 30
 PERIOD = 2000
 TOTAL_MEAS_ITER = 5
 
@@ -95,7 +95,7 @@ def getSINRandRSRP():
     listResp = response.split(",")
     print(listResp)
     RSRP = int(listResp[2]) #bug???
-    SINR = int(listResp[3])
+    SINR = int(int(listResp[3])*0.2-20)
     return SINR, RSRP
 
 ## Returns List of strings Radio_values = ["NB-IoT", CELL_ID, Tracking Area Code, Band, EARFCN]
@@ -141,7 +141,7 @@ while(1):
         print("------")
         '''
         if module.isRegistered():   
-            mysocket.send(json_init_payload)
+            mysocket.send(sensor_json_payload)
         else:
             print("Not registered")
             # To do: link to register function
