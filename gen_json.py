@@ -16,17 +16,13 @@ def gen_json_init(radio_values, gps, DEV_ID, FW_VER, MAN):
     "deviceId": {DEV_ID},
     "firmwareVersion": "{FW_VER}",
     "manufacturer": "{MAN}",
-    "radio": {{
-        "technology": "{radio_values[0]}",
-        "cellId": {radio_values[1]},
-        "TAC": {radio_values[2]},
-        "band": {radio_values[3]},
-        "EARFCN": {radio_values[4]}
-    }},
-    "gps": {{
-        "latitude": "{GPS[0]}",
-        "longitude": "{GPS[1]}"
-    }}
+    "technology": "{radio_values[0]}",
+    "cellId": {radio_values[1]},
+    "TAC": {radio_values[2]},
+    "band": {radio_values[3]},
+    "EARFCN": {radio_values[4]},
+    "latitude": {GPS[0]},
+    "longitude": {GPS[1]}
     }}"""
 
     # remove whitespace and stuff
