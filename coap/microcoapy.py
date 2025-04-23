@@ -84,6 +84,10 @@ class Coap:
 
         writePacketPayload(buffer, coapPacket)
 
+
+        # return bytearray of whole packet, rest we dont need
+        return buffer
+
         status = 0
         try:
             sockaddr = (ip, port)

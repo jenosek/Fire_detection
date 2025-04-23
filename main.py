@@ -1,6 +1,10 @@
 import machine
-#import coap_macros
 import tmplib as TMP
+
+import coap
+
+client = microcoapy.Coap()
+client.debug = True
 
 # CONSTANTS
 I2C_SDA = 14
