@@ -4,6 +4,20 @@ import uselect, sys
 import BG77
 import _thread
 import os
+import gen_json
+
+DEV_ID = 24
+FW_VER = "1.0.0"
+MAN = "VUT Brno"
+GPS = [49.2267250, 16.5743461]
+
+AccessT = "2njiwhpsv38zc0i49214"
+DevID = "14279d50-1f84-11f0-9037-29f37c847020"
+
+IP_ADDRESS = "147.229.148.105"
+PORT = 5683
+_COAP_POST_URL = f'api/v1/{AccessT}/telemetry'
+
 
 spoll=uselect.poll()
 spoll.register(sys.stdin,uselect.POLLIN)
@@ -50,7 +64,7 @@ def readline():
         c = read1()
     return buffer
 
-
+### returns [SINR, RSRP] values as ints
 def getSINRandRSRP():
     response = module.sendCommand("AT+QCSQ\r\n")
     while "NBIoT" not in response:
@@ -61,10 +75,10 @@ def getSINRandRSRP():
     print(listResp)
     RSRP = int(listResp[2]) #bug???
     SINR = int(listResp[3])
-    return [RSRP, SINR]
+    return [SINR, RSRP]
 
-print(getSINRandRSRP())
 
+### returns List of strings Radio_values = ["NB-IoT", CELL_ID, Tracking Area Code, Band, EARFCN]
 def getStartInfo():
     response = module.sendCommand("AT+QNWINFO\r\n")
     while "NBIoT" not in response:
@@ -79,9 +93,39 @@ def getStartInfo():
         print(rsp)
     listRSP = rsp.split(",")    
     listResp = response.split("\r")[0].split(",")    
-    return ["NBIoT",listRSP[3],listRSP[2],listResp[2], listResp [3]]
+    return ["NBIoT",listRSP[3],listRSP[2],listResp[2], listResp[3]]
 
-print(getStartInfo())
+def create_coap_payload(confirmable, uri, json_payload):
+    version = 1
+    type = 0 if confirmable else 1 # 0 for CON, 1 for NON
+    token_length = 0
+    code = 2 # POST method
+    message_id = 12345
+
+    # Create the header
+    header = (version << 6) | (type << 4) | token_length
+    header_bytes = struct.pack('!BBH', header, code, message_id)
+
+   
+    
+
+    # Construct the full message
+    coap_message = header_bytes + b'\xff' + json_payload
+
+    return coap_message
+
+
+json_init_payload = gen_json.gen_json_init(getStartInfo(), GPS, DEV_ID, FW_VER, MAN)
+
+
+'''
+Opening UDP socket
+'''
+socket = module.socket(BG77.AF_INET, BG77.SOCK_DGRAM, BG77.SOCK_CLIENT, BG77.SOCK_PUSH_BUFFER)
+socket.connect(IP_ADDRESS, PORT, 0)
+if module.isRegistered():
+    socket.send(["POST ",json_init_payload])
+
 
 while True:
     try:
