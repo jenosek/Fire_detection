@@ -32,7 +32,9 @@ hum = []
 
 # VARIABLES
 global alarm
+global false_alarm
 alarm = False
+false_alarm = False
 
 # RADIO WAKE UP
 spoll=uselect.poll()
@@ -81,9 +83,16 @@ def irq_meas(_):
     temp.append(sensor.temperature)
     hum.append(sensor.humidity)
     global alarm 
+    global false_alarm
+
+    if (sensor.temperature <= TEMP_THR and alarm):
+        false_alarm = True
+        alarm = False
+
     if (sensor.temperature > TEMP_THR and not alarm) :
         alarm = True
-        print(alarm)
+        false_alarm = False
+    
 
 ## Returns [SINR, RSRP] values as ints
 def getSINRandRSRP():
@@ -130,7 +139,7 @@ time = machine.Timer()
 time.init(mode=machine.Timer.PERIODIC, period=PERIOD, callback=irq_meas)
 
 while(1):
-    if (len(temp) == TOTAL_MEAS_ITER):
+    if (len(temp) == TOTAL_MEAS_ITER or alarm or false_alarm):
         sinr, rsrp = getSINRandRSRP()
 
         sensor_json_payload = gen_json.gen_json_data(alarm, rsrp, sinr, temp, hum)
