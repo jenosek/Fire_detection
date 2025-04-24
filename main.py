@@ -4,7 +4,7 @@ import uselect, sys
 import time
 import BG77
 import gen_json
-
+from PSM import PSM
 
 
 # CONSTANTS
@@ -75,6 +75,22 @@ while "NBIoT" not in resp:
     module.sendCommand("AT+COPS=1,2,23003\r\n")
     resp = module.sendCommand("AT+QNWINFO\r\n")
 
+## Initialize PSM
+
+psm = PSM(module, pon_trig)
+
+## Enable PSM
+
+if psm.enable():
+    print("PSM mode enabled successfully")
+
+    psm_status = psm.get_psm_status()
+    if psm_status:
+        print(f"PSM status: Enabled={psm_status['enabled']}")
+        print(f"Network TAU: {psm_status['network_tau']}")
+        print(f"Network Active Time: {psm_status['network_active']}")
+else:
+    print("Failed to enable PSM mode")
 
 # FUNCTIONS
 ## Read sensor
