@@ -55,10 +55,30 @@ i2c_handler = machine.I2C(1, sda=machine.Pin(I2C_SDA), scl=machine.Pin(I2C_CLK),
 sensor = TMP.AHT20(i2c_handler, SENSOR_ADDRESS)
 
 ## Initialize radio
+'''
 radio_module = radio.RADIO()
 module = radio_module.module
 radio_module.connect_radio()
+'''
+bg_uart = machine.UART(0, baudrate=115200, tx=machine.Pin(0), rxbuf=256, rx=machine.Pin(1), timeout = 0, timeout_char=1)
 
+bg_uart.write(bytes("AT\r\n","ascii"))
+print(bg_uart.read(10))
+
+## Radio Module Class Init
+module = BG77.BG77(bg_uart, verbose=True, radio=False)
+time.sleep(3)
+module.sendCommand("AT+QCFG=\"band\",0x0,0x80084,0x80084,1\r\n")
+module.setRadio(1)
+module.setAPN("lpwa.vodafone.iot")
+module.sendCommand("AT+QCSCON=1\r\n")
+time.sleep(3)
+module.setRadio(1)
+resp = module.sendCommand("AT+QNWINFO\r\n")
+while "NBIoT" not in resp:
+    time.sleep(3)
+    module.sendCommand("AT+COPS=1,2,23003\r\n")
+    resp = module.sendCommand("AT+QNWINFO\r\n")
 
 ## Initialize PSM
 
@@ -167,6 +187,6 @@ while(1):
 
         else:
             print("Not registered")
-            radio_module.connect_radio()
+            module.connect_radio()
         
     
