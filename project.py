@@ -5,6 +5,7 @@ import BG77
 import _thread
 import os
 import gen_json
+from PSM import PSM
 #from coap import microcoapy
 #from coap import coap_macros as macros
 
@@ -59,7 +60,22 @@ while "NBIoT" not in resp:
     time.sleep(3)
     module.sendCommand("AT+COPS=1,2,23003\r\n")
     resp = module.sendCommand("AT+QNWINFO\r\n")
+'''
+psm = PSM(module, pon_trig, PSM.TAU_5_minutes, PSM.ACTIVE_15_seconds)
 
+## Enable PSM
+
+if psm.enable():
+    print("PSM mode enabled successfully")
+
+    psm_status = psm.get_psm_status()
+    if psm_status:
+        print(f"PSM status: Enabled={psm_status['enabled']}")
+        print(f"Network TAU: {psm_status['network_tau']}")
+        print(f"Network Active Time: {psm_status['network_active']}")
+else:
+    print("Failed to enable PSM mode")
+    '''
 print("Terminal Ready")
 
 def read1():
@@ -142,9 +158,9 @@ while True:
         data = readline()
         if len(data) != 0:
             if "WKUP" in data.upper():
-                pon_trig.value(1)
-                time.sleep(.3)
                 pon_trig.value(0)
+                time.sleep(.3)
+                pon_trig.value(1)
             elif "TIME" in data:
                 print(time.ticks_ms())
             elif "STOP" in data:

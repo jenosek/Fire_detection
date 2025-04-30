@@ -195,7 +195,8 @@ class BG77:
     def isRegistered(self) -> bool:
         self.__flush_uart_rx_buffer()
         ret = self.sendCommand(f"AT+CEREG?\r\n")
-        if "+CEREG" in ret:
+        if "+CEREG:" in ret:
+            print(f"Data rec: {ret}")
             data = ret.strip("+CEREG: ")
             data = data.split(",")
             if data[1] == '1' or data[1] == '5':

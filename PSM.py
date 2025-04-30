@@ -26,7 +26,7 @@ class PSM:
         if not self.module:
             print("Error: BG77 module not initialized")
             return False
-
+        # AT+QPSMS=1,,,"10100101","00000001"
         result = self.module.sendCommand(f"AT+QPSMS=1,,,\"{self.tau}\",\"{self.active}\"\r\n")
         if "OK" not in result:
             print("Error enabling PSM")
@@ -63,7 +63,7 @@ class PSM:
         self.pon_trig.value(1)
         time.sleep(0.3)
         self.pon_trig.value(0)
-        time.sleep(5)  # Wait for module to wake up
+        time.sleep(1)  # Wait for module to wake up
         return True
 
     def get_psm_status(self):

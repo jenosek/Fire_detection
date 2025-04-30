@@ -19,6 +19,7 @@ class RADIO:
 
 
     def connect_radio(self):
+        self.module.setRadio(0)
         self.module.sendCommand("AT+QCFG=\"band\",0x0,0x80084,0x80084,1\r\n")
         self.module.setRadio(1)
         self.module.setAPN("lpwa.vodafone.iot")
