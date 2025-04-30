@@ -1,4 +1,5 @@
 import machine
+import radio
 import tmplib as TMP
 import uselect, sys
 import time
@@ -49,34 +50,15 @@ time.sleep(5)
 ## I2C Handler (sensor)
 i2c_handler = machine.I2C(1, sda=machine.Pin(I2C_SDA), scl=machine.Pin(I2C_CLK), freq=100000)
 
-## UART Handler (Radio)
-bg_uart = machine.UART(0, baudrate=115200, tx=machine.Pin(0), rxbuf=256, rx=machine.Pin(1), timeout = 0, timeout_char=1)
-
-
 ## Initialize AHT20
 sensor = TMP.AHT20(i2c_handler, SENSOR_ADDRESS)
 
-## Initialize Radio (HW)
-bg_uart.write(bytes("AT\r\n","ascii"))
-print(bg_uart.read(10))
+## Initialize radio
+module = radio.RADIO()
+module.connect_radio()
 
-## Radio Module Class Init
-module = BG77.BG77(bg_uart, verbose=True, radio=False)
-time.sleep(3)
-module.sendCommand("AT+QCFG=\"band\",0x0,0x80084,0x80084,1\r\n")
-module.setRadio(1)
-module.setAPN("lpwa.vodafone.iot")
-module.sendCommand("AT+QCSCON=1\r\n")
-time.sleep(3)
-module.setRadio(1)
-resp = module.sendCommand("AT+QNWINFO\r\n")
-while "NBIoT" not in resp:
-    time.sleep(3)
-    module.sendCommand("AT+COPS=1,2,23003\r\n")
-    resp = module.sendCommand("AT+QNWINFO\r\n")
 
 ## Initialize PSM
-
 psm = PSM(module, pon_trig)
 
 ## Enable PSM
@@ -166,10 +148,10 @@ while(1):
         print("------")
         '''
         if module.isRegistered():   
-            mysocket.send(sensor_json_payload)
+            mysocket.send(sensor_json_payload, rai=2)
         else:
             print("Not registered")
-            # To do: link to register function
+            module.connect_radio()
 
         temp.clear()
         hum.clear()
