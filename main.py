@@ -55,8 +55,9 @@ i2c_handler = machine.I2C(1, sda=machine.Pin(I2C_SDA), scl=machine.Pin(I2C_CLK),
 sensor = TMP.AHT20(i2c_handler, SENSOR_ADDRESS)
 
 ## Initialize radio
-module = radio.RADIO()
-module.connect_radio()
+radio_module = radio.RADIO()
+module = radio_module.module
+radio_module.connect_radio()
 
 
 ## Initialize PSM
@@ -158,14 +159,14 @@ while(1):
             if data_len == 0:
                 print("Message not delivered")
 
-            else:      
+            else:  
+                print(f"Rx message: {message}")    
                 temp.clear()
                 hum.clear()
                 notify_alarm = False
 
         else:
             print("Not registered")
-            # To do: link to register function
-            module.connect_radio()
+            radio_module.connect_radio()
         
     
