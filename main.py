@@ -16,6 +16,7 @@ SENSOR_ADDRESS = 56
 TEMP_THR = 30
 PERIOD = 2000
 TOTAL_MEAS_ITER = 5
+ACK_MESSAGE_LENGTH = 2
 
 ## WIRELESS
 DEV_ID = 24
@@ -59,7 +60,8 @@ module.connect_radio()
 
 
 ## Initialize PSM
-psm = PSM(module, pon_trig)
+
+psm = PSM(module, pon_trig, PSM.TAU_5_minutes, PSM.ACTIVE_2_seconds)
 
 ## Enable PSM
 
@@ -95,7 +97,7 @@ def irq_meas(_):
 ## Returns [SINR, RSRP] values as ints
 def getSINRandRSRP(module):
     response = module.sendCommand("AT+QCSQ\r\n")
-    while "NBIoT" not in response and len(response.split(","))>3:
+    while "NBIoT" not in response and len(response.split(","))<3:
         time.sleep(1)
         response = module.sendCommand("AT+QCSQ\r\n")
         print(response)
@@ -108,7 +110,7 @@ def getSINRandRSRP(module):
 ## Returns List of strings Radio_values = ["NB-IoT", CELL_ID, Tracking Area Code, Band, EARFCN]
 def getStartInfo():
     response = module.sendCommand("AT+QNWINFO\r\n")
-    while "NBIoT" not in response:
+    while "NBIoT" not in response and len(response.split(","))<3:
         time.sleep(1)
         response = module.sendCommand("AT+QNWINFO\r\n")
         print(response)
@@ -147,15 +149,23 @@ while(1):
         print("Humidity array:", hum)
         print("------")
         '''
+
+        psm.wakeup()
         if module.isRegistered():   
             mysocket.send(sensor_json_payload, rai=2)
+
+            data_len, message = mysocket.recv(ACK_MESSAGE_LENGTH)
+            if data_len == 0:
+                print("Message not delivered")
+
+            else:      
+                temp.clear()
+                hum.clear()
+                notify_alarm = False
+
         else:
             print("Not registered")
+            # To do: link to register function
             module.connect_radio()
-
-        temp.clear()
-        hum.clear()
-        notify_alarm = False
-        
         
     
