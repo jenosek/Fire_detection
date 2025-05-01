@@ -6,6 +6,36 @@ import time
 import BG77
 import gen_json
 from PSM import PSM
+import _thread
+
+global thread2active
+def core2_task():
+    import machine
+    global thread2active
+    thread2active = True
+    sel0 = machine.Pin(2, machine.Pin.OUT)
+    sel1 = machine.Pin(3, machine.Pin.OUT)
+
+    sel0.value(0)
+    sel1.value(1)
+
+    adc = machine.ADC(0)
+
+    uart = machine.UART(1, baudrate=115200, tx=machine.Pin(4), rx=machine.Pin(5))
+    VREF=3.3
+    while thread2active:
+        read_adc = adc.read_u16()
+        '''
+        if read_adc > 65000:
+            sel0.value(1)
+        elif read_adc < 42000:
+            sel0.value(0)
+        '''
+        #print(str(read_adc))
+        uart.write(str(time.ticks_ms())+ "," + str(read_adc)+"\r")
+        time.sleep(0.001)
+        
+second_thread = _thread.start_new_thread(core2_task, ())
 
 
 # CONSTANTS
@@ -14,7 +44,7 @@ I2C_SDA = 14
 I2C_CLK = 15
 SENSOR_ADDRESS = 56
 TEMP_THR = 30
-PERIOD = 5000
+PERIOD = 6000
 TOTAL_MEAS_ITER = 5
 ACK_MESSAGE_LENGTH = 2
 
@@ -145,46 +175,53 @@ if module.isRegistered():
 ## Timer
 timer = machine.Timer() # type: ignore
 timer.init(mode=machine.Timer.PERIODIC, period=PERIOD, callback=irq_meas)
-
-while(1):
-    if (len(temp) >= TOTAL_MEAS_ITER or notify_alarm):
-        
-        '''
-        print("Temperature array:", temp)
-        print("------")
-        print("Humidity array:", hum)
-        print("------")
-        '''
-
-        
-        if module.isRegistered():
-            sinr, rsrp = getSINRandRSRP(module)
-
-            sensor_json_payload = gen_json.gen_json_data(alarm, rsrp, sinr, temp, hum)   
-            mysocket.send(sensor_json_payload)
-
-            data_len, message = mysocket.recv(ACK_MESSAGE_LENGTH)
-            if data_len == 0:
-                print("Message not delivered")
-
-            else:  
-                print(f"Rx message: {message}")    
-                temp.clear()
-                hum.clear()
-                notify_alarm = False
-
-        else:
-            print("Not registered")
-            psm.wakeup()
-            module.sendCommand("AT+CEREG=4\r\n")
-            module.setRadio(1)
-            module.sendCommand("AT+CEREG?\r\n")
-            module.sendCommand("AT+QNWINFO\r\n")
-            module.sendCommand("AT+QIACT=1\r\n")
-            module.sendCommand("AT+QISTATE\r\n")
+mainThread = True
+while(mainThread):
+    try:
+        if (len(temp) >= TOTAL_MEAS_ITER or notify_alarm):
             
-            #mysocket.connect(IP_ADDRESS, PORT, 0)
-            time.sleep(2)
-            #radio_module.connect_radio()
-        
+            '''
+            print("Temperature array:", temp)
+            print("------")
+            print("Humidity array:", hum)
+            print("------")
+            '''
+
+            
+            if module.isRegistered():
+                sinr, rsrp = getSINRandRSRP(module)
+
+                sensor_json_payload = gen_json.gen_json_data(alarm, rsrp, sinr, temp, hum)   
+                mysocket.send(sensor_json_payload)
+
+                data_len, message = mysocket.recv(ACK_MESSAGE_LENGTH)
+                if data_len == 0:
+                    print("Message not delivered")
+
+                else:  
+                    print(f"Rx message: {message}")    
+                    temp.clear()
+                    hum.clear()
+                    notify_alarm = False
+
+            else:
+                print("Not registered")
+                psm.wakeup()
+                module.sendCommand("AT+CEREG=4\r\n")
+                module.setRadio(1)
+                module.sendCommand("AT+CEREG?\r\n")
+                module.sendCommand("AT+QNWINFO\r\n")
+                module.sendCommand("AT+QIACT=1\r\n")
+                module.sendCommand("AT+QISTATE\r\n")
+                
+                mysocket.close()
+                time.sleep(2)
+                mysocket.connect(IP_ADDRESS, PORT, 0)
+                #mysocket.connect(IP_ADDRESS, PORT, 0)
+                
+                #radio_module.connect_radio()
+    except KeyboardInterrupt:
+        thread2active = False
+        mainThread = False
+        print("Threads terminated")
     

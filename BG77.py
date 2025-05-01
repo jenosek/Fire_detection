@@ -102,7 +102,10 @@ class BG77:
         while time.time() < (time_start + timeout):
             data_tmp = self.serial.read(1)
             if data_tmp:
-                data_out = data_out + str(data_tmp, 'ascii')
+                try:
+                    data_out = data_out + str(data_tmp, 'ascii')
+                except:
+                    print(data_tmp)
             if exit_condition in data_out:
                 break
         return data_out
@@ -578,8 +581,12 @@ class BG77Socket:
             if retry_num > 9:
                 return False
         ret = ret.strip("\r\n")
-        ret = ret.strip("+QIRD: ")
-        data_len = int(ret)
+        ret = ret.split("+QIRD: ")
+        try:
+            data_len = int(ret[1])
+        except:
+            print(f"Failed to parse to int: {ret[1]}")
+            data_len = 2
         message_raw = self.modem.__read(exit_condition="\r\n", timeout=2)
         if self.modem.verbose:
             print(str(time.ticks_ms()) + " <- " + message_raw)
