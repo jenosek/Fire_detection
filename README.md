@@ -27,7 +27,7 @@ but network has provided us with:
 ![Denpendency of current consumption on time](img/current_graph.png)
 
 ## Sensor
-Temperature and humidity are measured by AHT20 sensor, controlled by I2C bus. Sensor measures temperatures in range from -40 °C to 80 °C with accuracy of +-0.3 °C (temperature) and +-2 % (humidity). Data are then allocated to array. After every successful measurement, temperature is evaluated, whether to fire an alarm or not. 
+Temperature and humidity are measured by AHT20 sensor, controlled by I2C bus. Sensor measures temperatures in range from -40 °C to 80 °C with accuracy of	&plusmn;0.3 °C (temperature) and &plusmn;2 % (humidity). Data are then allocated to array. After every successful measurement, temperature is evaluated, whether to fire an alarm or not. 
 
 ## Power supply 
 Current draw of development kit (board) was measured at 89,4 mA. While in sleep mode the system draws around 200 &micro;A. To cover consumption, for instance a solar 600mW solar supplying a pair of Li-Ion batteries (18650) should be used.
