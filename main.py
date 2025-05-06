@@ -34,6 +34,7 @@ def core2_task():
         #print(str(read_adc))
         uart.write(str(time.ticks_ms())+ "," + str(read_adc)+"\r")
         time.sleep(0.001)
+    print("second thread terminated")
         
 second_thread = _thread.start_new_thread(core2_task, ())
 
@@ -44,7 +45,7 @@ I2C_SDA = 14
 I2C_CLK = 15
 SENSOR_ADDRESS = 56
 TEMP_THR = 30
-PERIOD = 6000
+PERIOD = 10000
 TOTAL_MEAS_ITER = 5
 ACK_MESSAGE_LENGTH = 2
 
@@ -224,4 +225,4 @@ while(mainThread):
         thread2active = False
         mainThread = False
         print("Threads terminated")
-    
+print("Main thread terminated")   
